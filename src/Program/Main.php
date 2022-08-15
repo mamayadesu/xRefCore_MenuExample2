@@ -1,4 +1,5 @@
 <?php
+declare(ticks = 1);
 
 namespace Program;
 
@@ -12,7 +13,6 @@ use CliForms\MenuBox\Events\SelectedItemChangedEvent;
 use CliForms\MenuBox\Label;
 use CliForms\MenuBox\MenuBoxControl;
 use CliForms\MenuBox\MenuBoxDelimiter;
-use CliForms\MenuBox\MenuBoxTypes;
 use CliForms\MenuBox\Radiobutton;
 use Data\String\ForegroundColors;
 use IO\Console;
@@ -23,12 +23,11 @@ class Main
 {
     public function __construct(array $args)
     {
-        $menu = new MenuBox("oOoOoOo My First Menu oOoOoOo", $this, MenuBoxTypes::KeyPressType);
+        $menu = new MenuBox("oOoOoOo My First Menu oOoOoOo", $this);
+        $menu->Id = "mymenubox";
         $menu->SetRowHeaderItemDelimiter(" ");
-        $menu->SetRowsHeaderType(RowHeaderType::ARROW3);
+        $menu->SetRowsHeaderType(RowHeaderType::STARS);
         $menu->SetDescription("This is an example of menu");
-        $menu->SetInputTitle("Input item number and press Enter, honey");
-        $menu->SetWrongItemTitle("Item with same number doesn't exist. Please, try again, dear!");
 
         /**
          * ADDING EVENTS TO OUR MENUBOX
@@ -72,6 +71,7 @@ class Main
             /** @var Checkbox $item */$item = $event->Item;
             $event->MenuBox->GetElementById("checkme")->Disabled($item->Checked());
         });
+        $item2->Id = "item2";
 
         $item3 = new MenuBoxItem("Open child menu box", "??", function(ItemClickedEvent $event) : void
         {
@@ -155,7 +155,8 @@ class Main
             AddItem($item5)->
             AddItem($item6)->
             AddItem($item7)->
-            AddItem(new Label("\nRadio buttons group"))->
+            AddItem(new Label(""))->
+            AddItem(new Label("Radio buttons group"))->
             AddItem($rb1)->
             AddItem($rb2)->
             AddItem($rb3)->
@@ -163,6 +164,8 @@ class Main
             AddItem($rb4)->
             AddItem($rb5)->
             SetZeroItem($zero);
+
+        $menu->ItemsContainerHeight(12);
 
         /**
          * ...and just render it
@@ -193,6 +196,30 @@ class Main
          * Testing menu box inside menu box!
          */
         $menu = new MenuBox("Child menu box", $this);
+        $menu->SetDescription("hey!");
+        /** @var array<MenuBoxItem> $items */$items = [];
+        /** @var MenuBoxItem $item */$item = null;
+        $hide = 0;
+        for ($i = 1; $i <= 30; $i++)
+        {
+            $items[] = $item = new MenuBoxItem("Item " . $i, "Hint #" . $i, function(ItemClickedEvent $event) : void {});
+            if ($hide > 0)
+            {
+                $item->Visible(false);
+
+                // hide every second element
+                $hide++;
+                if ($hide == 2)
+                {
+                    $hide = 0;
+                }
+            }
+            else
+            {
+                $hide++;
+            }
+        }
+
         $menu->
             AddItem((new MenuBoxItem("Print me time", "", function(ItemClickedEvent $event) : void
             {
@@ -202,6 +229,15 @@ class Main
             {
                 $event->MenuBox->Close();
             })));
+
+        foreach ($items as $item)
+        {
+            $menu->AddItem($item);
+        }
+        $menu->ItemsContainerHeight(7);
+        $menu->Id = "child";
+
         $menu->Render();
+        $menu->Dispose();
     }
 }
