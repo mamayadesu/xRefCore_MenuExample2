@@ -1,9 +1,9 @@
 {
-    "php_version": "7.4",
+    "php_version": "7.4.11",
     "app_name": "MenuExample",
-    "app_version": "0.1",
+    "app_version": "1.0",
     "app_author": "xRef",
     "app_description": "",
     "namespaces": [],
-    "framework_version": "1.14.0.0"
+    "framework_version": "1.17.0.0"
 }

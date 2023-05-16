@@ -11,16 +11,19 @@ use CliForms\MenuBox\Events\MenuBoxCloseEvent;
 use CliForms\MenuBox\Events\MenuBoxOpenEvent;
 use CliForms\MenuBox\Events\SelectedItemChangedEvent;
 use CliForms\MenuBox\Label;
-use CliForms\MenuBox\MenuBoxControl;
 use CliForms\MenuBox\MenuBoxDelimiter;
 use CliForms\MenuBox\Radiobutton;
 use Data\String\ForegroundColors;
 use IO\Console;
 use CliForms\MenuBox\MenuBox;
 use CliForms\MenuBox\MenuBoxItem;
+use Scheduler\AsyncTask;
+use Scheduler\IAsyncTaskParameters;
 
 class Main
 {
+    private int $timer = 60;
+
     public function __construct(array $args)
     {
         $menu = new MenuBox("oOoOoOo My First Menu oOoOoOo", $this);
@@ -35,6 +38,11 @@ class Main
         $menu->KeyPressEvent = function(KeyPressEvent $event) : void
         {
             $event->MenuBox->SetDescription("Dude, you pressed " . $event->Key);
+
+            if ($event->Key == "delete")
+            {
+                $event->MenuBox->GetSelectedItem()->Remove();
+            }
         };
 
         $menu->SelectedItemChangedEvent = function(SelectedItemChangedEvent $event) : void
@@ -46,11 +54,13 @@ class Main
 
         $menu->OpenEvent = function(MenuBoxOpenEvent $event) : void
         {
+            Console::HideCursor();
             $event->MenuBox->ResultOutputLine("I'm opened!");
         };
 
         $menu->CloseEvent = function(MenuBoxCloseEvent $event) : void
         {
+            Console::ShowCursor();
             $event->MenuBox->ResultOutputLine("closing");
             Console::WriteLine("i'm closing");
         };
@@ -69,7 +79,7 @@ class Main
         $item2 = new Checkbox("Do you want to disable 'Check me'?", "Changes 'Check me' `Disabled` property", function(ItemClickedEvent $event) : void
         {
             /** @var Checkbox $item */$item = $event->Item;
-            $event->MenuBox->GetElementById("checkme")->Disabled($item->Checked());
+            $event->MenuBox->GetElementById("checkme")->Disabled = $item->Checked;
         });
         $item2->Id = "item2";
 
@@ -82,7 +92,7 @@ class Main
          * This item is unselectable
          */
         $item4 = new MenuBoxItem("I'm so sorry, but you can't select me :(", "", function(ItemClickedEvent $event) : void{});
-        $item4->Selectable(false);
+        $item4->Selectable = false;
 
         $item5 = new Checkbox("Check me!", "hint4", function(ItemClickedEvent $event) : void
         {
@@ -91,7 +101,7 @@ class Main
              */
 
             /** @var Checkbox $item */$item = $event->Item;
-            if ($item->Checked())
+            if ($item->Checked)
             {
                 $event->MenuBox->ResultOutputLine("Yay!", ForegroundColors::GREEN);
             }
@@ -110,8 +120,8 @@ class Main
             $menu = $event->MenuBox;
             $k = count($menu->GetSortedItems());
             foreach ($menu->GetSortedItems() as $item)
-            {if(!$item instanceof MenuBoxControl)continue;
-                $item->Ordering($k);
+            {
+                $item->Ordering = $k;
                 $k--;
             }
             $menu->ResultOutputLine("Now your items are upside down!");
@@ -120,21 +130,32 @@ class Main
         /**
          * Invisible item
          */
-        $item7 = new MenuBoxItem("I'M INVISIBLE!!", "", function(ItemClickedEvent $event) : void{});
-        $item7->Visible(false);
+        $item7 = new MenuBoxItem("remove me", "", function(ItemClickedEvent $event) : void
+        {
+            $event->Item->Remove();
+        });
 
         /**
          * The first radiobuttons group
          */
-        ($rb1 = new Radiobutton("Rb1", "hint6"))->GroupName("firstgroup");
-        ($rb2 = new Radiobutton("Radiobutton 2", "hint7"))->GroupName("firstgroup");
-        ($rb3 = new Radiobutton("R b 3", "hint8"))->GroupName("firstgroup");
+        $rb1 = new Radiobutton("Rb1", "hint6");
+        $rb1->GroupName = "firstgroup";
+        $rb1->Name = "СОСИ";
+
+        $rb2 = new Radiobutton("Radiobutton 2", "hint7");
+        $rb2->GroupName = "firstgroup";
+
+        $rb3 = new Radiobutton("R b 3", "hint8");
+        $rb3->GroupName = "firstgroup";
 
         /**
          * The second radiobuttons group
          */
-        ($rb4 = new Radiobutton("Radio button 4", "hint9"))->GroupName("second");
-        ($rb5 = new Radiobutton("Radio button 5", "hint10"))->GroupName("second");
+        $rb4 = new Radiobutton("Radio button 4", "hint9");
+        $rb4->GroupName = "second";
+
+        $rb5 = new Radiobutton("Radio button 5", "hint10");
+        $rb5->GroupName = "second";
 
         $zero = new MenuBoxItem("Close Menu", "hint11", function(ItemClickedEvent $event)
         {
@@ -165,12 +186,36 @@ class Main
             AddItem($rb5)->
             SetZeroItem($zero);
 
-        $menu->ItemsContainerHeight(12);
+        $menu->ItemsContainerHeight = 12;
+
+        $timer = new Label("This app will be closed in " . $this->timer . " seconds.");
+        $timer->Id = "mytimer";
+        $timer->Ordering = -10;
+        $menu->AddItem($timer);
+
+        new AsyncTask($this, 1000, false, function(AsyncTask $task, IAsyncTaskParameters $params) : void
+        {
+            $menu = MenuBox::GetMenuBoxById("mymenubox");
+            if ($menu === null)
+            {
+                $task->Cancel();
+                return;
+            }
+            $this->timer--;
+            if ($this->timer == 0)
+            {
+                exit;
+            }
+            $timer = $menu->GetElementById("mytimer");
+            $timer->Name = "This app will be closed in " . $this->timer . " seconds.";
+        });
 
         /**
          * ...and just render it
          */
+
         $menu->Render();
+        $menu->Dispose();
 
         /**
          * Attention! The code below WON'T be executed until MenuBox running
@@ -197,15 +242,15 @@ class Main
          */
         $menu = new MenuBox("Child menu box", $this);
         $menu->SetDescription("hey!");
-        /** @var array<MenuBoxItem> $items */$items = [];
-        /** @var MenuBoxItem $item */$item = null;
+        /** @var array<MenuBoxItem> $items */ $items = [];
+        /** @var MenuBoxItem $item */ $item = null;
         $hide = 0;
         for ($i = 1; $i <= 30; $i++)
         {
             $items[] = $item = new MenuBoxItem("Item " . $i, "Hint #" . $i, function(ItemClickedEvent $event) : void {});
             if ($hide > 0)
             {
-                $item->Visible(false);
+                $item->Visible = false;
 
                 // hide every second element
                 $hide++;
@@ -234,7 +279,7 @@ class Main
         {
             $menu->AddItem($item);
         }
-        $menu->ItemsContainerHeight(7);
+        $menu->ItemsContainerHeight = 7;
         $menu->Id = "child";
 
         $menu->Render();
